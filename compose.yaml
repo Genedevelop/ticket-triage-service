@@ -1,0 +1,38 @@
+services:
+  # --- Database ---
+  db:
+    image: postgres:18
+    environment:
+      # local development only: the port is not published, so the database is reachable from this stack alone
+      POSTGRES_HOST_AUTH_METHOD: trust
+      POSTGRES_DB: triage
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d triage"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+    volumes:
+      - pgdata:/var/lib/postgresql
+
+  # --- Service ---
+  app:
+    build: .
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      # passed through from the caller's environment or env file; never stored in this repository
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      TRIAGE_MODEL: ${TRIAGE_MODEL:-gpt-4.1-mini}
+      TRIAGE_REASONING_EFFORT: ${TRIAGE_REASONING_EFFORT:-}
+      TRIAGE_LOG_LEVEL: ${TRIAGE_LOG_LEVEL:-INFO}
+      DATABASE_URL: postgresql://postgres@db:5432/triage
+    volumes:
+      # the repository is mounted so a code change needs no rebuild
+      - .:/srv
+    ports:
+      - "8000:8000"
+
+# --- Volumes ---
+volumes:
+  pgdata:

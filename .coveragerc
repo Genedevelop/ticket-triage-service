@@ -1,0 +1,28 @@
+# --- Measurement ---
+[run]
+# the target is about the service package and the composition root; evals is measured beside them and reported on its own
+source_pkgs =
+    backend
+    main
+    evals
+# a line counts, and so does each way out of it
+branch = True
+# every process writes a data file of its own, and they are combined when the run ends
+parallel = True
+# a server the end-to-end tests start as a separate process is measured too
+patch = subprocess
+# a server stopped with the terminate signal still writes what it measured
+sigterm = True
+
+# --- Report ---
+[report]
+# what the total and the target cover: the package and the composition root, without evals
+include =
+    backend/*
+    main.py
+# the test command fails when the total falls below this
+fail_under = 95
+# only the files with something missing are listed, each with its line numbers
+show_missing = True
+skip_covered = True
+precision = 1

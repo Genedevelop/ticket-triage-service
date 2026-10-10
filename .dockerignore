@@ -1,0 +1,20 @@
+# --- Version control ---
+.git
+
+# --- Secrets ---
+# never copied into an image
+.env
+.env.*
+
+# --- Python ---
+# caches and virtual environments of the host
+__pycache__
+.pytest_cache
+.hypothesis
+.venv
+
+# --- Local output ---
+evals/results
+.coverage
+.coverage.*
+htmlcov

@@ -1,0 +1,13 @@
+# --- Service ---
+# the direct dependencies; requirements.txt pins them with everything they pull in
+fastapi
+uvicorn
+psycopg[binary,pool]
+openai
+pydantic
+
+# --- Tests and evaluation ---
+pytest
+pytest-cov
+httpx
+hypothesis
