@@ -61,9 +61,10 @@ curl -s -X POST localhost:8000/conversations/<conversation_id>/messages -H 'cont
 
 The answer carries `reply` and a new decision version; `changed_fields` on it names the fields that differ
 from the version before. Every version stays readable with the `GET` above. When the model cannot finish an
-operator turn the answer is `503` with `Retry-After` and no decision is written: the operator is there to ask
-again. An operator cannot approve anything by chat. With an `Idempotency-Key` header the message is stored
-once, and a repeat returns the decision of the turn that covered it.
+operator turn the answer is `503` and no decision is written. It carries `Retry-After`, because the operator
+is there to ask again, except when the model is misconfigured (such as no key, or a rejected key or model
+id), which asking again does not fix. An operator cannot approve anything by chat. With an `Idempotency-Key`
+header the message is stored once, and a repeat returns the decision of the turn that covered it.
 
 ## Approve or reject a refund
 
@@ -86,8 +87,9 @@ curl -s -X POST localhost:8000/actions/<action_id>/approval -H 'content-type: ap
 again: unchanged, the refund is executed once and the answer shows the action `succeeded`; changed since the
 proposal, the action becomes `stale` and nothing is refunded; unreadable, the answer is `503` and the action
 stays pending. The same verdict posted again answers `200` with the current status; the opposite verdict
-answers `409`. A charge has one refund action, whichever ticket or turn proposes it, and a rejected refund
-stays rejected.
+answers `409`. A charge has at most one refund action that is waiting, running, succeeded or rejected,
+whichever ticket or turn proposes it; one that went `stale` or `failed` frees the charge for a new proposal,
+and a rejected refund stays rejected.
 
 A refund whose outcome at the provider stayed unknown after its attempts is parked in `needs_review` and is
 never tried again by the service. The person who looked at the provider records what they found:
@@ -169,9 +171,9 @@ of the shipped one; a name that is no file there ends the command with 2 and lis
 nothing in the served application, which always loads the file `PROMPT_FILE` names. The model is the
 `TRIAGE_MODEL` setting, passed for one command with `-e` as above.
 
-The output starts with one line that says what was measured — the prompt version (file stem and hash of
-the sent text), the model requested and the model ids the vendor returned, the runs per case, the UTC start.
-Its shape, with example values:
+After the log lines of the runs, the command prints one line that says what was measured — the prompt
+version (file stem and hash of the sent text), the model requested and the model ids the vendor returned,
+the runs per case, the UTC start — and then the table. Its shape, with example values:
 
 ```
 prompt triage_v2@fc8d2044 | model requested gpt-4.1-mini, returned gpt-4.1-mini-2025-04-14 | runs 3 | started 2026-10-10T06:39:12Z
@@ -199,8 +201,10 @@ What was measured is in `docs/eval-baseline.md`. The terminal output it was coun
 `docs/eval-logs/`, in three folders: `baseline/`, the three morning passes of the first comparison, 144
 runs; `shipped/`, a pass of three runs with the shipped prompt on the final code and the requests of this
 README answered by the served service; `experiments/`, the pass of `triage_v3`, which was measured and not
-shipped, and the two attempts at another model that the vendor refused for the key used, so the fourth
-command above has no result here. `docs/eval-logs/README.md` has the command that counts each number.
+shipped, and three attempts at two other models that gave no measurement: the fourth command above with
+`gpt-4.1`, which the vendor refused for the key used, and two `evals.smoke` calls with `gpt-5-mini`, one
+refused the same way and one answered `429 credit_balance_exhausted`; so the fourth command above has no
+result here. `docs/eval-logs/README.md` has the command that counts each number.
 
 One round trip to the real model — a strict tool call and a strict final answer — without the service or
 the database, also run by whoever holds the key:
@@ -214,9 +218,10 @@ OPENAI_API_KEY=... docker compose run --rm --no-deps app python -m evals.smoke
 The service writes one JSON line per event to standard output: `turn.started`, `llm.call`, `tool.call`,
 `action.transition`, `decision.made` and `turn.fallback`, each with `request_id`, `conversation_id`,
 `turn_id`, `action_id`, `duration_ms` and `outcome`. The request id is the caller's `X-Request-Id` when one
-was sent, otherwise a new one, and is returned in that header. Message bodies, tool arguments and tool
-results are not logged at the default level — they are stored as steps and read with
-`GET /conversations/<conversation_id>` — and are added as `payload` with `TRIAGE_LOG_LEVEL=DEBUG`.
+was sent, otherwise a new one, and is returned in that header. Tool arguments, tool results and the
+model's text are not logged at the default level — they are stored as steps and read with
+`GET /conversations/<conversation_id>` — and are added as `payload` with `TRIAGE_LOG_LEVEL=DEBUG`. Message
+bodies are not passed to the log at any level; they are stored as messages and read with the same `GET`.
 
 ```sh
 docker compose logs -f app
@@ -239,7 +244,7 @@ docker compose restart app
 | `OPENAI_API_KEY` | key for the model vendor | none |
 | `TRIAGE_MODEL` | model id | `gpt-4.1-mini` |
 | `TRIAGE_REASONING_EFFORT` | sent only when set; a non-reasoning model rejects it | unset |
-| `TRIAGE_LOG_LEVEL` | log level; `DEBUG` adds message and tool payloads to the log lines | `INFO` |
+| `TRIAGE_LOG_LEVEL` | log level; `DEBUG` adds the model's text and tool arguments and results to the log lines | `INFO` |
 | `DATABASE_URL` | set by `compose.yaml` | |
 
 The example environment file in the repository root lists these names. Copy it to the file Compose reads

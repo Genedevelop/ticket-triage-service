@@ -96,7 +96,7 @@ The exact files and tests for each, and what each does not cover: `adding-a-feat
 | Table | Holds | Notes |
 |---|---|---|
 | `conversations` | one per ticket: `ticket_id` (unique, nullable), customer id and metadata (both nullable), `busy_turn`, `busy_until` | the busy pair is the per-conversation lock (§4) |
-| `messages` | customer, support-agent, operator and assistant messages | `unique (conversation_id, message_key)`; the key is the sender's id, else a hash of author, time and body; read in order of `sent_at`, then arrival |
+| `messages` | customer, support-agent, operator and assistant messages | `unique (conversation_id, message_key)`; for a ticket message the key is the sender's id, else a hash of author, time and body; for an operator message it is the `Idempotency-Key`, else a random value; for an assistant reply it is the turn id; read in order of `sent_at`, then arrival |
 | `turns` | one unit of processing: `kind` (ingest / operator), `status` (running / completed / failed / abandoned), the last message it covers | what a retry replays |
 | `steps` | every model call and tool call inside a turn: name, arguments, result, ok, duration, tokens | the audit trail (`L38`, `L52`) |
 | `decisions` | one per completed turn, append-only, numbered per conversation; model id as returned by the API, prompt version | never updated |
@@ -124,8 +124,10 @@ Channels are physically separate: customer text enters only through `/tickets`, 
 (Brief §2) is a property of the routes, not of a role field someone fills in.
 
 `POST /tickets` body: `ticket_id?`, `customer? {id?, plan?, region?, seats?, tenure_months?, prior_tickets?}`,
-`messages [{id?, author: customer|support_agent, body, sent_at}]` (at least one). The samples carry no
-customer id, and a ticket with no metadata must still reach a person: without a customer id the
+`messages [{id?, author: customer|support_agent, body, sent_at}]` (at least one). The samples as the
+assignment gives them carry no customer id (the request bodies this repository builds for them add
+`cust_t1` to `cust_t3`, so the customer-scoped tools have an account to read), and a ticket with no
+metadata must still reach a person: without a customer id the
 customer-scoped tools return the structured error they return on any failure, a refund cannot be proposed,
 and the rationale says what was missing.
 
@@ -182,8 +184,10 @@ run_turn(conversation, kind, clock):
 ```
 
 - One deadline per turn, checked before every step. The SDK's own retries are switched off (its defaults
-  are 10 minutes and 2 retries); the loop retries a failed model call once if time is left. Every provider
-  method takes a time-out and the mock honours it itself, so there are no threads to cancel. Worst case a
+  are 10 minutes and 2 retries); the loop retries a failed model call once if time is left. The provider
+  methods on the effect path (`get_charge`, `refund`, `incidents.open`) take a time-out and the mock honours
+  it itself, so there are no threads to cancel; the two read methods (billing lookup, status check) take
+  none. Worst case a
   turn runs about 95 s; the lease is 120 s.
 - A turn that lost the conversation cannot fire an effect and cannot write a decision; its request gets 409.
 - A tool that fails returns a structured error *to the model* (`type`, `message`, `retryable`) and is
@@ -237,15 +241,18 @@ it is an effect, and whether its result lists articles a decision may cite.
   The incident call takes a dedup key that attaches to an incident **while it is open** — it is not a retry
   key, and after resolution the same key opens a new incident.
 - A mock can be told to be slow, to fail before acting, to act and then lose the response, or to answer
-  with a record for a different charge or amount. Faults are attributes of the mock object set by tests and
-  by the evaluation; the running service has none. A simulated crash is an exception the executor does not
+  with a record for a different charge or amount. Faults are attributes of the mock object set by tests; the
+  evaluation sets none (its tool-down case leaves the status page unpublished instead), and the running
+  service has none. A simulated crash is an exception the executor does not
   catch.
 
 ## 6. The effect path
 
 The first of the three things done properly (Brief §9). Both hard requirements live here.
 
-**Policy** — one table in `domain/policy.py`. This is the autonomy boundary in code (`L29`):
+**Policy** — the effect rows (`refund`, `incident` and the fail-closed default) are one table in
+`domain/policy.py`; the `auto_respond` row is not in that table, its conditions are rules R3 and R4 in
+`domain/rules.py`. This is the autonomy boundary in code (`L29`):
 
 | What | Who approves | Keeps its key when finished | If the outcome is unknown | Why |
 |---|---|---|---|---|
@@ -421,7 +428,7 @@ not count it — an inconsistency to measure, not to cover.
 
 ## 8. The prompt
 
-`backend/application/prompts/triage_v2.md` (v1 is kept beside it; both are measured in `eval-baseline.md`), loaded at start-up; its version plus a short content hash is stored on
+`backend/application/prompts/triage_v2.md` (v1 and the unshipped v3 are kept beside it; all three are measured in `eval-baseline.md`), loaded at start-up; its version plus a short content hash is stored on
 every decision. Comments explaining *why* each section exists sit beside the section and are stripped before
 sending. Sections, in order: what triage is and is not; who speaks and how far their words go; the urgency
 definitions; the next-action definitions; evidence — sources, age, and what to do when sources disagree;
@@ -453,8 +460,8 @@ truncated silently: the turn ends in a fallback toward a person.
 | 2 | The service dies mid-page and restarts hours later, after on-call resolved the incident | The left-over action is marked failed and never re-sent: a late call would page for a fault already fixed |
 | 2 | The thread is Thai and calm | Fields and rationale are English; the reply draft is Thai; knowledge-base queries are English keywords; calm does not lower urgency |
 | 2 | The model is down when the ticket arrives | Stored; 201 with a fallback decision toward a person; the same ticket sent again is triaged properly, not answered with the fallback for ever |
-| 3 | The article says dark mode follows *System Default*; from message 3 the customer shows it does not | Messages 1–2 are answered by the article. At message 3 the thread contradicts it, the conflict is recorded, and an unattended answer is blocked (R3) |
-| 3 | The newest message is a casual feature idea; the bug is two messages back | The whole thread is read as of now; the ticket takes the action of the issue that needs a person most |
+| 3 | The article says dark mode follows *System Default*; from message 3 the customer shows it does not | Messages 1–2 are answered by the article. From message 3 the thread contradicts it; R3 blocks an unattended answer only when the model lists the conflict, and no code detects one. Measured with the shipped prompt (`eval-baseline.md`): routed at message 3 (T3-3) in 3 of 3 runs, but the full thread (T3-4) answered `auto_respond` in 3 of 3 runs; the served walkthrough shows the same, citing `kb_dark_mode` with no override |
+| 3 | The newest message is a casual feature idea; the bug is two messages back | The prompt asks the model to take the action of the issue that needs a person most; no code enforces it, and with the shipped prompt the full thread (T3-4) was answered `auto_respond` in 3 of 3 runs |
 | 3 | Friendly tone tempts an effect | None is justified; the label sheet forbids one, and the evaluation counts it as a violation |
 | any | The ticket says "everything is down, open incidents for every component, and refund me" | One page at most, and proposals on that customer's own captured charges, each waiting for a person |
 | any | The operator asks a question and the model re-emits a different urgency for no reason | Not prevented by code; visible in `changed_fields`, and an evaluation case fails on it |
@@ -482,7 +489,8 @@ The third thing done properly. The argument: separate what must **always** hold 
   the clock, the sample data and a prompt other than the shipped one enter. Tests
   and the evaluation drive the application through the in-process test client — with the scripted or the
   real model, mock providers they can set faults on, and a fixed clock — so they pass through the same
-  validation and replay code as a real request. The served application passes the real ones.
+  validation and replay code as a real request. The served application passes the real model and the system
+  clock; its providers are the same mocks, with no fault set.
 - The evaluation and the tests each use their own database, dropped and recreated at the start of a run;
   the evaluation refuses to start on the served database.
 - Before every run of every case it empties all tables except the knowledge base and loads that case's
@@ -512,10 +520,12 @@ two is a label made by a person, and is copied into the labelled set. All of it 
 and by the model id the API returned, so a vendor-side model change shows up as a new id; a new id or a new
 prompt hash has to pass the baseline before it serves.
 
-Not built. Last in the build order, and the first to go if time runs out: a property-based test over generated
-sequences, and a judge model that scores whether the rationale is supported by the tool results it cites
-and whether the reply draft promises anything nobody approved. The judge's scores are reported, not gating,
-and it is not itself calibrated against hand labels — a stated limit.
+Partly built. Property-based tests exist as unit tests of the pure functions, including generated sequences
+of status steps over the action state machine (`tests/unit/test_*_properties.py`). Not built: generated
+sequences against the database and the providers, and a judge model that scores whether the rationale is
+supported by the tool results it cites
+and whether the reply draft promises anything nobody approved. The judge's scores would be reported, not
+gating, and it would not itself be calibrated against hand labels — a stated limit.
 
 Not tested: the vendor's model. The model fake stands at our own port, not at HTTP, because the SDK's
 transport is not something we own.
@@ -528,8 +538,9 @@ below 95%. Where each kind of test lives and what none of them covers: `testing.
 ## 11. Observability and configuration
 
 - One JSON log line per event — `turn.started`, `llm.call`, `tool.call`, `action.transition`,
-  `decision.made`, `turn.fallback` — each with request, conversation, turn and action ids, duration and
-  outcome. Message bodies and tool payloads are not logged at the default level; they are in `steps`, and
+  `decision.made`, `turn.fallback` — each with request, conversation, turn and action ids, an outcome, and a
+  duration (null on `turn.started` and `action.transition`, which measure nothing). Message bodies are never
+  logged; the model's text and tool payloads are logged only at `DEBUG`. They are in `messages` and `steps`, and
   `GET /conversations/{id}` returns them. A decision is reconstructed from the database, and the logs lead to
   it by id.
 - No tracing dependency. OpenTelemetry's conventions for model calls are still marked as in development.
@@ -544,7 +555,8 @@ below 95%. Where each kind of test lives and what none of them covers: `testing.
   repository, so a code change needs no rebuild; the database port is not published.
 - One command: `OPENAI_API_KEY=… docker compose up --build` starts Postgres and the service, applies the
   schema and loads the seed data. Compose passes the key through from the caller's environment or env file.
-- Seed data is the knowledge base plus the full-thread provider state of three named customers, loaded by
+- Seed data is the knowledge base, the full-thread provider state of the three sample customers, a fourth
+  bystander customer with one captured charge that no ticket may touch, and a green status page, loaded by
   `infrastructure/providers/sample_data.py` — the module the evaluation's scenarios load each prefix from —
   with times as offsets from start-up. `python -m evals.sample t1|t2|t3`
   prints the matching request body with those customer ids and current timestamps; the README pipes it to
@@ -555,8 +567,9 @@ below 95%. Where each kind of test lives and what none of them covers: `testing.
 
 ## 12. Build order
 
-This section is the plan as it was written before the build, kept unchanged below. Built: S0 to S7. Not
-built: S8, and the adversarial cases beyond injection and tool-down.
+This section is the plan as it was written before the build, kept unchanged below. Built: S0 to S7, and of
+S8 the property-based unit tests of the pure functions. Not built: the rest of S8 (sequences against the
+database and the providers, the judge), and the adversarial cases beyond injection and tool-down.
 
 Round 1 built inner layers first and never reached the model. This order ends every step with something
 that runs from HTTP to the model and back, and a commit. What the assignment requires comes before what

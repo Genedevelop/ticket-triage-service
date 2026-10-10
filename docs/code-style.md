@@ -87,11 +87,12 @@ compare-and-set (`UPDATE ... WHERE status = ... RETURNING`), so the function ret
 
 Checked by review; the behaviour of the statements by `tests/integration/test_refund_races.py` and `tests/integration/test_lease.py`.
 
-## 5. Errors are raised as `AppError`, where they happen, and never translated on the way up
+## 5. Errors are raised as `AppError`, where they happen, and never re-shaped for HTTP on the way up
 
 A module defines the error it raises, as a subclass of one category from `backend/core/errors.py`. Callers
 catch an error only to handle it — hand it to the model, retry, mark an action — never to re-shape it for
-HTTP.
+HTTP. Some re-raise one as the `AppError` their own caller should see — a tool as a `ToolError` for the
+model, `LLMMisconfigured` as `ModelMisconfigured`; the full list is in `logging-and-errors.md`.
 
 Good — `backend/application/actions/resolve.py`:
 
@@ -122,8 +123,10 @@ Checked by `tests/architecture/test_logging_rule.py`.
 ## 7. Dependencies are passed in
 
 A function takes what it needs as arguments: the pool, the providers, the clock's value (`now`), the timing.
-Nothing reads a global or the environment except `load_settings` in `backend/core/config.py`, and only
-`main.py` and the commands under `backend/cli` construct infrastructure.
+Under `backend/` and in `main.py` nothing reads a global or the environment except `load_settings` in
+`backend/core/config.py`, and only `main.py` and the commands under `backend/cli` construct infrastructure.
+`evals/run.py` and `evals/smoke.py` are entry points of their own: both build the model adapter, and
+`evals/run.py` also reads `DATABASE_URL` from the environment and builds the pool and the provider mocks.
 
 Good — `backend/application/actions/execute.py`:
 
@@ -161,7 +164,7 @@ Checked by review.
   `test_a_ticket_sent_again_under_another_customer_is_refused_and_nothing_is_stored`.
 - A test lives in the folder named after what it touches: `tests/unit` for a pure function (no database, no
   HTTP), `tests/integration` for anything on the real database or through the HTTP client,
-  `tests/architecture` for a test that reads the source, `tests/e2e` for the service as its own process.
+  `tests/architecture` for a rule about the code's structure, `tests/e2e` for the service as its own process.
   A file that would mix two kinds is two files of the same name, one per folder. What each folder may and
   may not use: `testing.md`.
 - Integration tests go through the HTTP client and a real database (`client`, `empty_database` in

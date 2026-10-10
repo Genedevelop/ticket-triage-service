@@ -47,7 +47,7 @@ the new file `triage_v3.md`, which the served service does not load, and an opti
 | `experiments/triage_v3-gpt-4.1-mini-3-runs.log` | 2026-10-10 14:36 to 14:40 | `python -m evals.run --prompt triage_v3 --runs 3` | in the header line: `triage_v3@3df4a585`, requested `gpt-4.1-mini`, returned `gpt-4.1-mini-2025-04-14` |
 | `experiments/triage_v2-gpt-4.1-refused.log` | 2026-10-10 14:44 | the same command as the pass in `shipped/` with `TRIAGE_MODEL=gpt-4.1`, chained after it in one terminal | none measured: the vendor refused the model on the first call, and the command ended with 2 |
 | `experiments/gpt-5-mini-smoke-refused.txt` | 2026-10-10, evening | `python -m evals.smoke` with `TRIAGE_MODEL=gpt-5-mini` and `TRIAGE_REASONING_EFFORT=low` | none measured: refused the same way; two lines, the note of the person who ran it and the line the command printed |
-| `experiments/gpt-5-mini-smoke-out-of-credit.txt` | 2026-10-10, later that evening | the same command | none measured: the vendor answered `429 credit_balance_exhausted`, which the adapter reports as misconfigured, not as a rate limit to wait out; two lines, as above |
+| `experiments/gpt-5-mini-smoke-out-of-credit.txt` | 2026-10-10, later that evening | the same command | none measured: the vendor answered `429 credit_balance_exhausted` and the command reported misconfigured, which the adapter does for a 429 whose error type is `insufficient_quota`; the type of this answer was not recorded; two lines, as above |
 
 The pass in `shipped/` and the refused attempt were one terminal output, two commands chained; it was cut
 between the last line the first command printed and the first container line of the second, and nothing was
@@ -66,7 +66,7 @@ ids, `event`, `outcome`, `duration_ms`, `kind`, `model`, `input_tokens`, `output
 
 ## The two table formats
 
-The morning tables have ten columns. The evening tables have a header line above them, two more columns —
+The morning tables have nine columns. The evening tables have a header line above them, two more columns —
 "effects proposed" and "first call in", between "runs differ" and "latency s" — and two more totals lines,
 `incident proposed` and `refund proposed`. In both formats "tools missed" is the fifth column, "runs
 differ" the seventh and the tokens the last, so the commands below that read those work on every file.

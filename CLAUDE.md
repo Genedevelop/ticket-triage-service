@@ -78,11 +78,13 @@ Full text: `docs/comment-style.md`, `docs/naming-conventions.md`, `docs/code-sty
 
 Full text: `docs/logging-and-errors.md`.
 
-- Raise a subclass of one category from `backend/core/errors.py`, defined in the module that raises it; never an
+- Raise a subclass of one category from `backend/core/errors.py`, defined in the module that raises it — or one
+  of the shared errors already in that file (`NotFound`, `Busy`, `Lost`, `OtherCustomer`, `Internal`); never an
   exception class of the language. Routes never catch; `backend/api/problems.py` maps the category to a status
   once.
-- Log only with `log.event(...)` from `backend/core/logging.py`. No `import logging`, and no `print` outside
-  `backend/cli`, where it is the command's output. Anything that may hold customer text goes in `payload`.
+- Log only with `log.event(...)` from `backend/core/logging.py`. No `import logging` outside that module,
+  and no `print` outside it and `backend/cli`, where it is the command's output. Anything that may
+  hold customer text goes in `payload`.
 
 ## Adding a feature
 

@@ -70,8 +70,8 @@ An approver's or resolver's name **is** logged, as `actor` on `action.transition
 ### Adding an event
 
 Call `log.event("<subject>.<what_happened>", outcome=..., ...)` where it happens; put anything that may
-carry customer text in `payload`. Add the name to the tables here and in the root `README.md`, and assert it
-in `tests/integration/test_log_events.py`.
+carry customer text in `payload`. Add the name to the tables here and to the list of events in
+the "Logs" section of the root `README.md`, and assert it in `tests/integration/test_log_events.py`.
 
 ## Errors
 
@@ -141,7 +141,11 @@ happening with the kinds the service ships.
 
 1. Code raises an `AppError` subclass where the failure is found — often in the store, inside a transaction
    that rolls back.
-2. Nothing between there and the route translates it. Application code catches an error only to act on it.
+2. No route and no handler translates it. Application code catches an error to act on it, and in two
+   places re-raises it as the error the client should see: `LLMMisconfigured` as `ModelMisconfigured`
+   (`triage_turn._run`), and a `ProviderError` during the evidence check as `EvidenceUnreadable`
+   (`approve.decide`). Four tools re-raise an error as the `ToolError` the model reads: `kb_search` for
+   `NoUsableToken`; `billing_lookup`, `status_check` and `propose_refund` for a `ProviderError`.
 3. The route does not catch it. A route only raises `NotFound` when the application returns `None`.
 4. `backend/api/problems.py::install` registered one handler for every category except `Internal`. It answers
    with `problem_for(error)`:

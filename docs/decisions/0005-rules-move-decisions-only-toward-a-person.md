@@ -12,8 +12,9 @@ decision maker.
 
 Next actions are ranked by how far they put the ticket in front of a person (`NEXT_ACTIONS` in
 `backend/domain/rules.py`): `auto_respond` 0, `route_to_specialist` 1, `escalate_to_human` 2. Each rule is a
-**floor**. `rules.apply` takes the highest of the draft and every floor that fired, and records each rule
-that changed the result in the decision's `overrides`.
+**floor**. `rules.apply` takes the highest of the draft and every floor that fired, and records in the
+decision's `overrides` every rule that fired with a floor above the drafted action, each from the drafted
+action to its own floor, also when a higher floor decided the result.
 
 | Rule | Fires when | Floor |
 |---|---|---|

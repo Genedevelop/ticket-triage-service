@@ -54,18 +54,22 @@ calls), and they created eight actions (`action.transition` events with `propose
 ## What the morning numbers say
 
 - No run of 144 produced a forbidden value or a forbidden effect, including the injected-instruction case.
-  Misses are toward slower or more cautious handling.
+  Most misses are toward slower or more cautious handling. The exception is T3-4: 5 of its 9 morning runs
+  answered unattended (`auto_respond`), although the label accepts only `route_to_specialist`.
 - `triage_v1` never opened an incident: its text and the tool description asked for the thread and the tools
   to agree, and the status page said "operational". `triage_v2` states that a green page next to a credible
   report is the reason to page. With the committed text the model opens one in 5 of 9 runs (1 of 9 with the
   earlier draft, before the incident instructions were reworded), and never on the two-message prefix (T2-2). In the runs where it does not, the ticket still reaches a person; nobody is paged.
-- `triage_v1` routed knowledge-base questions without searching. `triage_v2` searches every time and answers
-  T3-1 and T3-2 from the article.
+- `triage_v1` skipped the knowledge-base search in 5 of 12 Ticket 3 runs: in the three T3-1 runs it drafted
+  an unattended answer with no article and rule R3 raised it to `route_to_specialist`; in one run each of
+  T3-2 and T3-4 it routed without searching. `triage_v2` searches every time and answers T3-1 and T3-2 from
+  the article.
 - Regression, not fixed: `triage_v2` stopped proposing refunds: 9 `propose_refund` calls with `triage_v1`,
   0 with the earlier draft and 0 with the committed text, counted from the log files as said under the table.
   The rewording between the two `triage_v2` passes was of the incident instructions, and the count was
-  already 0 before it. The duplicate-charge tickets are
-  escalated with the billing evidence, so a person decides, but the approval path is not exercised by the
+  already 0 before it. The duplicate-charge tickets still
+  reach a person with the billing evidence (escalated, or routed to a specialist in 2 of 3 T1-3 runs with
+  the committed text), so a person decides, but the approval path is not exercised by the
   model on these cases. The label sheet does not require a proposal, so no case fails on it.
 - Urgency moved by three runs between the two `triage_v2` passes, whose texts differ as said above, and the
   three identical runs of one pass disagree with each other in ten of sixteen cases in the `triage_v2` pass
@@ -156,8 +160,8 @@ failed runs (a forbidden value or a forbidden effect): 0
 Two more passes of 16 cases × 3 runs, run back to back at 14:36 and 14:41 UTC with the commands
 `python -m evals.run --prompt triage_v3 --runs 3` and `python -m evals.run --prompt triage_v2 --runs 3`, on
 the code as it is at the commit that recorded this section. They are not part of the 144 runs above. Each
-output starts with a header line that names the prompt version, the model requested and returned, the runs
-and the UTC start, so for these two passes the file itself says what was sent. The first column repeats the
+output prints, after its event lines and directly above the table, a header line that names the prompt
+version, the model requested and returned, the runs and the UTC start, so for these two passes the file itself says what was sent. The first column repeats the
 third morning pass, which sent the same text: its first model call has the same number of input tokens in
 every prefix case as the evening `triage_v2` pass (`eval-logs/README.md`, "The first model call of each
 case").
@@ -284,10 +288,11 @@ refund proposed (calls over all runs): 0
    first model call (`eval-logs/experiments/triage_v2-gpt-4.1-refused.log`), and `python -m evals.smoke`
    with `TRIAGE_MODEL=gpt-5-mini` and `TRIAGE_REASONING_EFFORT=low` was refused the same way
    (`eval-logs/experiments/gpt-5-mini-smoke-refused.txt`): `PermissionDeniedError 403 model_not_found` both
-   times. A later attempt on `gpt-5-mini`, after access was requested, was refused for another reason,
+   times. A later attempt on `gpt-5-mini`, after access was requested, was refused with
    `RateLimitError 429 credit_balance_exhausted`
-   (`eval-logs/experiments/gpt-5-mini-smoke-out-of-credit.txt`): the adapter reports an account without
-   credit as misconfigured too, because waiting does not fix it. The service handled the refusal as designed: the model call is logged with outcome
+   (`eval-logs/experiments/gpt-5-mini-smoke-out-of-credit.txt`) and reported as misconfigured: the adapter
+   does that for a 429 whose error type is `insufficient_quota`, and the type of this answer was not
+   recorded. The service handled the refusal as designed: the model call is logged with outcome
    `misconfigured` and no model id, the command says the model cannot be used and that nothing was
    decided, and ends with 2; the file holds no decision and no fallback event. Whether a larger model
    closes either gap is unknown, and what a reasoning model needs carried between steps is still untested

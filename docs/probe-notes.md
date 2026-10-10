@@ -27,12 +27,15 @@ listed an evidence conflict and one did not. That is the reason every evaluation
 
 ## Not answered
 
-- Reasoning models: the key used has no access to `gpt-6-luna`, so what must be carried between steps for a
-  model that returns reasoning items is untested. The adapter sends a reasoning effort only when one is set.
+- Reasoning models: the key used had no access to `gpt-6-luna` (that first attempt left no log), so what must be
+  carried between steps for a model that returns reasoning items is untested. The adapter sends a reasoning
+  effort only when one is set.
   Tried again on the evening of 2026-10-10 with `gpt-5-mini` and reasoning effort `low`, through
   `python -m evals.smoke`: refused with `PermissionDeniedError 403 model_not_found`, the second row of the
   table above (`eval-logs/experiments/gpt-5-mini-smoke-refused.txt`). `gpt-4.1` was refused the same way
-  (`eval-logs/experiments/triage_v2-gpt-4.1-refused.log`). The key reaches `gpt-4.1-mini` only, so this is
-  still untested against the vendor.
+  (`eval-logs/experiments/triage_v2-gpt-4.1-refused.log`). The key reached `gpt-4.1-mini` only; a later
+  attempt on `gpt-5-mini`, after access was requested, was refused with
+  `RateLimitError 429 credit_balance_exhausted` (`eval-logs/experiments/gpt-5-mini-smoke-out-of-credit.txt`),
+  so this is still untested against the vendor.
 - Refusals and truncated answers were not provoked; the adapter treats both as an unusable answer.
 - The SDK's default time-out is 600 s; the service always passes its own.

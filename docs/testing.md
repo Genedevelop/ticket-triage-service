@@ -30,7 +30,7 @@ same name, one per folder.
 |---|---|---|---|
 | `tests/unit` | it calls a function or a class and reads what comes back | the code under test, stub objects written in the test, `monkeypatch` on a library the code calls | the database, the HTTP client, a process |
 | `tests/integration` | it needs real PostgreSQL, or the application assembled by `create_app` and driven in process | the `client`, `llm`, `providers` and `empty_database` fixtures of `tests/conftest.py`; a second connection; threads | a port, a separate server process |
-| `tests/architecture` | it reads the source instead of running it | `ast`, the file tree, synthetic source text for the negative case | the database, the application |
+| `tests/architecture` | it states a rule about the code's structure | `ast`, the file tree, importing the modules to inspect their classes, synthetic source text for the negative case; `test_customer_record.py` also calls the two customer functions | the database, the application assembled by `create_app` |
 | `tests/e2e` | it needs the service as its own process: uvicorn serving over a socket, or a command run as documented | the `serve` and `unscripted_server` fixtures of `tests/e2e/conftest.py`, `httpx`, the test database read from outside | anything of the server's memory: no fixture reaches into the process |
 
 Run one folder alone by naming it and switching the coverage target off, which only the whole suite can

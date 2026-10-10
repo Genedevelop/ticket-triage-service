@@ -79,8 +79,8 @@ def client(empty_database: str, llm: ScriptedLLM, providers):
 # run one statement on the test database from outside the application, and return its rows if it has any
 def execute(database_url: str, query: str, *parameters):
     with psycopg.connect(database_url, autocommit=True, row_factory=psycopg.rows.dict_row) as conn:
-        cur = conn.execute(query, parameters)
-        return cur.fetchall() if cur.description else []
+        cursor = conn.execute(query, parameters)
+        return cursor.fetchall() if cursor.description else []
 
 
 # let every conversation's lease run out by moving its end into the past, instead of waiting for it

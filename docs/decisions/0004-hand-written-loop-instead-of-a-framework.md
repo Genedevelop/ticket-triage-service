@@ -14,7 +14,7 @@ conversation or turn.
 The loop is written by hand in `backend/application/agent_loop.py`: `run_turn` sets the turn up, `_take_steps`
 is the loop, and `_RunningTurn` holds the turn's state (`ask_model`, `run_tool_calls`, `decide`, `fall_back`,
 `complete`). The model is reached through the `LLM` protocol in `backend/domain/ports.py`. The limits are
-constants in that module: `TURN_DEADLINE_S`, `MODEL_TIMEOUT_S`, `MAX_STEPS`.
+constants in `backend/application/agent_loop.py`: `TURN_DEADLINE_S`, `MODEL_TIMEOUT_S`, `MAX_STEPS`.
 
 ## Consequences
 

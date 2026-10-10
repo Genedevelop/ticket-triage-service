@@ -26,7 +26,8 @@ Example: a tool that reads the customer's recent logins.
      `observed_at`, and raises `ToolError` for anything the model should read as a failure
      (`ToolError.from_provider(error)` for a `ProviderError`);
    - one `Tool(name=..., description=..., arguments=..., handler=...)` constant. The description is what
-     the model reads: the prompt files name no tool.
+     the model reads: the prompt text that is sent names no tool (only the `<!-- Why: ... -->` comments of
+     `triage_v3.md` do, and they are stripped before sending).
 2. **One registry entry** in `backend/application/tools/registry.py`: the import, and the constant in the tuple
    the `REGISTRY` dictionary is built from. The loop sends every registered tool to the model.
 3. **Where the data comes from.** An existing provider is on `context.providers`. Data in this service's own

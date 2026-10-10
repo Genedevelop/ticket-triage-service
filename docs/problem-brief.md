@@ -168,7 +168,8 @@ thing itself at the moment of acting.
 9. The idempotency guarantee assumes one service instance and providers that honour the key they are given.
    Where a provider cannot, the honest state is "unknown — needs a human".
 10. The three samples are the public test set and are not used as examples inside the prompt.
-11. A ticket may arrive with no customer metadata, or no customer id (the samples carry none). It is still
+11. A ticket may arrive with no customer metadata, or no customer id (the samples as the
+    assignment gives them carry none; the request bodies this repository builds for them add one). It is still
     triaged and still reaches a person; what needs a customer id — billing, a refund proposal — is refused
     for that ticket and the decision says so.
 
