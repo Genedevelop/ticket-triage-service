@@ -1,0 +1,2 @@
+2026-10-10, later the same evening (about 15:00 UTC), by the person who holds the key, after access to the model was requested: the same command, python -m evals.smoke with TRIAGE_MODEL=gpt-5-mini and TRIAGE_REASONING_EFFORT=low, printed the line below; only that line was kept.
+{"ok": false, "error": "LLMMisconfigured", "detail": "RateLimitError 429 credit_balance_exhausted"}

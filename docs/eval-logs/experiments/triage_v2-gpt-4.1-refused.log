@@ -1,0 +1,11 @@
+ Container ticket-triage-service-db-1 Running 
+ Container ticket-triage-service-db-1 Waiting 
+ Container ticket-triage-service-db-1 Healthy 
+ Container ticket-triage-service-app-run-f93ef576d75f Creating 
+ Container ticket-triage-service-app-run-f93ef576d75f Created 
+{"ts": "2026-10-10T14:44:48.738160+00:00", "event": "turn.started", "request_id": "98d7ef5218474dbea0ea6f1eee09947d", "conversation_id": "5a1753d4-0c9c-4e1d-b322-82bac73c1ed2", "turn_id": "59ed956b-3dcc-4fe1-b6d0-7090baf26562", "action_id": null, "duration_ms": null, "outcome": "running", "kind": "ingest"}
+{"ts": "2026-10-10T14:44:49.421076+00:00", "event": "llm.call", "request_id": "98d7ef5218474dbea0ea6f1eee09947d", "conversation_id": "5a1753d4-0c9c-4e1d-b322-82bac73c1ed2", "turn_id": "59ed956b-3dcc-4fe1-b6d0-7090baf26562", "action_id": null, "duration_ms": 680, "outcome": "misconfigured", "model": null}
+the model cannot be used: the model rejected the service's configuration: PermissionDeniedError 403 model_not_found; the request is stored and nothing was decided
+
+
+[exited with code 2]

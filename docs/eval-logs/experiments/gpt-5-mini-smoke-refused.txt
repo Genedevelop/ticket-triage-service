@@ -1,0 +1,2 @@
+2026-10-10, evening (UTC time not recorded), by the person who holds the key: python -m evals.smoke with TRIAGE_MODEL=gpt-5-mini and TRIAGE_REASONING_EFFORT=low printed the line below; only that line was kept.
+{"ok": false, "error": "LLMMisconfigured", "detail": "PermissionDeniedError 403 model_not_found"}

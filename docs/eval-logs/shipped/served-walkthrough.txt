@@ -1,0 +1,17 @@
+healthz 200 {'content-type': 'application/json'} {"status": "ok", "database": true}
+POST /tickets t1 201 {'content-type': 'application/json'} {"urgency": "high", "next_action": "escalate_to_human", "route_to": "billing", "tools_called": [{"ok": true, "name": "billing_lookup", "arguments": {}, "duration_ms": 1}], "overrides": [], "actions": [], "kb_article_ids": [], "version": 1}
+POST /tickets t2 201 {'content-type': 'application/json'} {"urgency": "critical", "next_action": "escalate_to_human", "route_to": "technical", "tools_called": [{"ok": true, "name": "status_check", "arguments": {}, "duration_ms": 3}], "overrides": [], "actions": [], "kb_article_ids": [], "version": 1}
+POST /tickets t3 201 {'content-type': 'application/json'} {"urgency": "low", "next_action": "auto_respond", "route_to": null, "tools_called": [{"ok": true, "name": "kb_search", "arguments": {"query": "dark mode appearance pro schedule auto-switch"}, "duration_ms": 14}], "overrides": [], "actions": [], "kb_article_ids": ["kb_dark_mode"], "version": 1}
+GET conversation 200 ['actions', 'customer', 'decisions', 'id', 'messages', 'ticket_id', 'turns'] {'messages': 4, 'decisions': 1, 'turns': 1, 'actions': 0}
+ticket_id first 201 {'content-type': 'application/json'} {"version": 1}
+ticket_id again 200 {'idempotent-replayed': 'true', 'content-type': 'application/json'} {"version": 1}
+ticket_id other customer 409 {'content-type': 'application/problem+json'} {"type": "urn:ticket-triage:problem:ticket-customer-mismatch", "title": "Ticket belongs to another customer", "ticket_id": "demo-2469606f"}
+operator question 200 {'content-type': 'application/json'} {"reply": "The charges captured were ch_t1_1 and ch_t1_2; the third charge ch_t1_3 is authorized but not captured.", "version": 2, "changed_fields": ["rationale", "customer_reply_draft", "operator_reply"], "next_action": "escalate_to_human"}
+operator asks refund 200 {'content-type': 'application/json'} {"version": 3, "next_action": "escalate_to_human", "actions": [{"id": "7ea975c5-6845-43e1-9b0e-ba627cd2288d", "kind": "refund", "status": "pending_approval"}], "tools_called": [{"ok": true, "name": "propose_refund", "arguments": {"reason": "Duplicate captured charge without account upgrade to Pro as requested by customer who was incorrectly charged twice.", "charge_id": "ch_t1_2"}, "duration_ms": 10}]}
+approve 200 {'content-type': 'application/json'} {"status": "succeeded", "kind": "refund", "id": "7ea975c5-6845-43e1-9b0e-ba627cd2288d"}
+approve again 200 {'content-type': 'application/json'} {"status": "succeeded"}
+reject after 409 {'content-type': 'application/problem+json'} {"type": "urn:ticket-triage:problem:verdict-contradiction", "title": "Verdict contradicts the recorded one"}
+resolution not in review 409 {'content-type': 'application/problem+json'} {"type": "urn:ticket-triage:problem:action-not-in-review", "title": "Action is not waiting for a resolution"}
+actions after [('refund', 'succeeded', 4)]
+422 422 {'content-type': 'application/problem+json'} {"type": "urn:ticket-triage:problem:validation-error", "title": "Request validation failed"}
+404 404 {'content-type': 'application/problem+json'} {"type": "urn:ticket-triage:problem:not-found", "title": "Not found"}
